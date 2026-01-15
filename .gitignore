@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Data files
+*.tif
+*.tiff
+*.nd2
+*.czi
+examples/test_data/*.tif*
+
+# Output
+outputs/
+results/
+*.csv
+*.roi
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
