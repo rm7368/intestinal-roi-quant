@@ -2,6 +2,11 @@
 
 Interactive pipeline for segmenting and quantifying intestinal swiss roll fluorescence images.
 
+## Updates
+
+- v1.1.0: Added batch mode. Access in either command using "--batch" flag.
+- v1.0.0: First release, manual centerline drawing and edge refinement. One image at a time.
+
 ## Overview
 
 This tool allows you to:

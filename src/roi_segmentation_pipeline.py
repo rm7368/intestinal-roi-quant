@@ -413,6 +413,48 @@ def select_file_gui(title="Select file", filetypes=[("TIFF files", "*.tif *.tiff
     root.destroy()
     return file_path
 
+def select_folders_gui(title="Select sample folders"):
+    """
+    Open GUI to select multiple folders.
+    """
+
+    from tkinter import Tk, filedialog
+
+    root = Tk()
+    root.withdraw()
+    root.attribtues('-topmost', True)
+
+    # Ask for parent dir containing sample folders
+    parent_dir = filedialog.askdirectory(title=title)
+
+    if not parent_dir:
+        root.destroy()
+        return []
+    
+    # Get subdirs
+    parent_path = Path(parent_dir)
+    sample_folders = [f for f in parent_path.iterdir() if f.is_dir()]
+
+    root.destroy()
+    return sample_folders
+
+def select_file_in_folder(folder_path, title="Select file"):
+    """
+    Open file picker restricted to specific folder.
+    """
+    from tkinter import Tk, filedialog
+
+    root = Tk()
+    root.withdraw()
+    root.attributes('-topmost', True)
+    file_path = filedialog.askopenfilename(
+        title=title,
+        initialdir=str(folder_path),
+        filetypes=[("TIFF files", "*.tif *.tiff"), ("All files", "*.*")]
+    )
+
+    root.destroy()
+    return file_path
 
 def main():
     """Main entry point with test mode support."""
@@ -422,15 +464,84 @@ def main():
     parser.add_argument('image_path', nargs='?', help='Path to DAPI image')
     parser.add_argument('--n-segments', type=int, default=10, 
                        help='Number of segments (default: 10)')
-    parser.add_argument('--downscale', type=float, default=1.0,
-                       help='Downscale factor (default: 1.0)')
+    parser.add_argument('--downscale', type=float, default=0.25,
+                       help='Downscale factor (default: 0.25)')
     parser.add_argument('--test', action='store_true',
                        help='Test mode: interactive file selection')
+    parser.add_argument('--batch', action='store_true',
+                        help='Batch mode: process multiple sample folders')
     
     args = parser.parse_args()
+
+    if args.batch:
+        print("\n" + "="*60)
+        print("BATCH MODE: Multiple Sample Processing")
+        print("\n" + "="*60)
+
+        print("\nSelect parent directory containing sample folders...")
+        sample_folders = select_folders_gui("Select parent directory with sample folders")
+
+        if not sample_folders:
+            print("No folders selected!")
+            return
+        
+        print(f"\nFound {len(sample_folders)} sample folders:")
+        for folder in sample_folders:
+            print(f"  - {folder.name}")
+
+        n_segments = input(f"\nNumber of segments for all samples [default: 10]: ").strip()
+        n_segments = int(n_segments) if n_segments else 10
+
+        results = []
+        for i, folder in enumerate(sample_folders, 1):
+            print("\n" + "="*60)
+            print(f"PROCESSING SAMPLE {i}/{len(sample_folders)}: {folder.name}")
+            print("="*60)
+            
+            print(f"\nSelect DAPI image in {folder.name}...")
+            dapi_path = select_file_in_folder(folder, f"Select DAPI image in {folder.name}")
+            
+            if not dapi_path:
+                print(f"No DAPI selected for {folder.name}, skipping...")
+                continue
+            
+            print(f"Selected: {Path(dapi_path).name}")
+            
+            try:
+                segmenter = IntestinalROISegmenter(
+                    dapi_path,
+                    n_segments=n_segments,
+                    downscale=args.downscale
+                )
+                output_dir = segmenter.run_full_pipeline()
+                results.append({
+                    'sample': folder.name,
+                    'dapi': dapi_path,
+                    'output': output_dir,
+                    'status': 'success'
+                })
+
+            except Exception as e:
+                print(f"\nERROR processing {folder.name}: {e}")
+                results.append({
+                    'sample': folder.name,
+                    'dapi': dapi_path,
+                    'output': None,
+                    'status': f'failed: {e}'
+                })
+
+        print("\n" + "="*60)
+        print("BATCH PROCESSING COMPLETE")
+        print("="*60)
+        for result in results:
+            status_symbol = "✓" if result['status'] == 'success' else 'x'
+            print(f"{status_symbol} {result['sample']}: {result['status']}")
+
+        successful = sum(1 for r in results if r['status'] == 'success')
+        print(f"\nSuccessfully processed {successful}/{len(results)} samples")
     
     # Test mode: interactive file selection
-    if args.test:
+    elif args.test:
         print("\n" + "="*60)
         print("TEST MODE: Interactive File Selection")
         print("="*60)

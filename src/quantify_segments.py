@@ -347,6 +347,23 @@ def select_file_gui(title="Select file", filetypes=[("TIFF files", "*.tif *.tiff
     root.destroy()
     return file_path
 
+def select_file_in_folder(folder_path, title="Select file"):
+    """Open file picker restricted to specific folder."""
+    from tkinter import Tk, filedialog
+    
+    root = Tk()
+    root.withdraw()
+    root.attributes('-topmost', True)
+    
+    file_path = filedialog.askopenfilename(
+        title=title,
+        initialdir=str(folder_path),
+        filetypes=[("TIFF files", "*.tif *.tiff"), ("All files", "*.*")]
+    )
+    
+    root.destroy()
+    return file_path
+
 
 def main():
     """Main entry point with test mode support."""
@@ -356,11 +373,102 @@ def main():
     parser.add_argument('roi_dir', nargs='?', help='ROI output directory')
     parser.add_argument('--test', action='store_true',
                        help='Test mode: interactive file selection')
+    parser.add_argument('--batch', action='store_true',
+                        help='Batch mode: process multiple samples')
     
     args = parser.parse_args()
+
+    if args.batch:
+        print("\n" + "="*60)
+        print("BATCH MODE: Multiple Sample Quantification")
+        print("="*60)
+        
+        print("\nSelect parent directory containing ROI output folders...")
+        from tkinter import Tk, filedialog
+        root = Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        
+        parent_dir = filedialog.askdirectory(title="Select parent directory with ROI outputs")
+        root.destroy()
+        
+        if not parent_dir:
+            print("No directory selected!")
+            return
+        
+        # Find all ROI output directories (contain segments.npy)
+        parent_path = Path(parent_dir)
+        roi_dirs = [d for d in parent_path.iterdir() 
+                    if d.is_dir() and (d / 'segments.npy').exists()]
+        
+        if not roi_dirs:
+            print("No ROI output directories found!")
+            return
+        
+        print(f"\nFound {len(roi_dirs)} samples:")
+        for roi_dir in roi_dirs:
+            print(f"  - {roi_dir.name}")
+        
+        # Ask how many channels (same for all samples)
+        n_channels = int(input("\nHow many channels (same for all samples)? "))
+        
+        # Get channel names
+        channel_names = []
+        for i in range(n_channels):
+            name = input(f"Channel {i+1} name: ").strip()
+            channel_names.append(name)
+        
+        # Process each sample
+        for i, roi_dir in enumerate(roi_dirs, 1):
+            print("\n" + "="*60)
+            print(f"QUANTIFYING SAMPLE {i}/{len(roi_dirs)}: {roi_dir.name}")
+            print("="*60)
+            
+            try:
+                quantifier = SegmentQuantifier(roi_dir)
+                
+                # Get sample name
+                sample_name = input(f"\nSample name [default: {roi_dir.name}]: ").strip()
+                if not sample_name:
+                    sample_name = roi_dir.name
+                
+                # Find original image folder (go up from roi_output)
+                metadata_path = roi_dir / 'metadata.json'
+                with open(metadata_path, 'r') as f:
+                    metadata = json.load(f)
+                
+                original_image_path = Path(metadata['image_path'])
+                image_folder = original_image_path.parent
+                
+                # Select channels in that folder
+                channel_dict = {}
+                for channel_name in channel_names:
+                    print(f"\nSelect {channel_name} image in {image_folder.name}...")
+                    channel_path = select_file_in_folder(
+                        image_folder,
+                        f"Select {channel_name} in {image_folder.name}"
+                    )
+                    
+                    if channel_path:
+                        print(f"  Selected: {Path(channel_path).name}")
+                        channel_dict[channel_name] = channel_path
+                    else:
+                        print(f"  No file selected for {channel_name}, skipping")
+                
+                if channel_dict:
+                    quantifier.run_quantification(channel_dict, sample_name=sample_name)
+                else:
+                    print(f"No channels selected for {sample_name}, skipping")
+                    
+            except Exception as e:
+                print(f"\nERROR quantifying {roi_dir.name}: {e}")
+        
+        print("\n" + "="*60)
+        print("BATCH QUANTIFICATION COMPLETE")
+        print("="*60)
     
     # Test mode: interactive selection
-    if args.test:
+    elif args.test:
         print("\n" + "="*60)
         print("TEST MODE: Interactive Quantification")
         print("="*60)
