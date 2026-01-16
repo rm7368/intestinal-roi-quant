@@ -1,4 +1,4 @@
-# Intestinal ROI Quantification Pipeline
+# Intestinal ROI Quantification Pipeline (v1.0.0)
 
 Interactive pipeline for segmenting and quantifying intestinal swiss roll fluorescence images.
 
