@@ -5,10 +5,10 @@ Interactive pipeline for segmenting and quantifying intestinal swiss roll fluore
 ## Overview
 
 This tool allows you to:
-1. Interactively select ROI from large DAPI-stained intestinal swiss rolls
-2. Segment the ROI into equal-length portions along the intestinal axis
-3. Perform epithelial cell segmentation
-4. Export results in FIJI-compatible format
+1. Create an epithelial cell mask from DAPI-stained intestinal swiss rolls.
+2. Edit the ROI of epithelial cell mask.
+3. Segment the ROI into equal-length portions along the intestinal axis.
+4. Quantify fluorescence channel CTFUs for each probe included.
 
 ## Installation
 ```bash
@@ -21,16 +21,32 @@ conda env create -f environment.yml
 conda activate intestinal-roi-quant
 ```
 
-## Quick Start
-```bash
-# Run interactive ROI selection
-python scripts/run_pipeline.py --input /path/to/image.tif
-```
-
 ## Usage
 
-See [detailed usage documentation](docs/usage.md).
+### Segmentation
+```bash
+# ROI Segmentation (interactive mode w/ file picker and terminal prompts)
+python src/roi_segmentation_pipeline.py --test
+# ROI Segmentation (command line mode w/ file and segment arguments)
+python src/roi_segmentation_pipeline.py /path/to/dapi.tif --n-segments 30
+```
 
-## Development
+### Quantification
+```bash
+# Image quantification (interactive mode w/ file picker and terminal prompts)
+python src/quantify_segments.py --test
+# Image quantification (command line mode w/ file arguments, channels are still prompted)
+python src/quantify_segments.py /path/to/roi_output_dir
+```
 
-This pipeline is under active development in the Zwick Lab at NYU Grossman School of Medicine.
+## Outputs
+
+- **segments.npy**: Segmented ROI masks (full resolution)
+- **quantification_results.xlsx**: CTFU measurements per segment per channel
+- **quantification_plot.png**: Line plots of CTFU measurements
+
+## Requirements
+
+- Python 3.10
+- napari, scikit-image, scipy, pandas, openpyxl, seaborn
+- See 'environment.yml' for complete list
