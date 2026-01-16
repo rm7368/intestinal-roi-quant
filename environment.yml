@@ -5,13 +5,18 @@ channels:
 dependencies:
   - python=3.10
   - numpy
+  - json
+  - pathlib
   - scipy
   - scikit-image
   - napari
   - pyqt
+  - openpyxl
+  - seaborn
   - tifffile
   - matplotlib
   - pandas
   - pip
   - pip:
     - roifile
+  - tk
